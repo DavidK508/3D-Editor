@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-vbY1locI+3uD89RjpV59FLv2FCzIsE+LS78VLKKCaN4='; style-src 'self'; img-src 'self' data: blob:; worker-src 'self' blob:;" />
+  <title>3D Editor</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./node_modules/three/build/three.module.js",
+        "three/addons/": "./node_modules/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar">
+      <div class="tb-group">
+        <span class="tb-title">Добавить:</span>
+        <button data-add="box" title="Куб (1)">Куб</button>
+        <button data-add="sphere" title="Сфера">Сфера</button>
+        <button data-add="cylinder" title="Цилиндр">Цилиндр</button>
+        <button data-add="cone" title="Конус">Конус</button>
+        <button data-add="torus" title="Тор">Тор</button>
+        <button data-add="capsule" title="Капсула">Капсула</button>
+        <button data-add="knot" title="Узел Торуса">Узел</button>
+        <button data-add="plane" title="Плоскость">Плоскость</button>
+        <button data-add="pointLight" title="Точечный свет">Свет</button>
+        <button data-add="dirLight" title="Направленный свет">Прожектор</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button id="btn-move" class="tool active" data-mode="translate" title="Перемещение (W)">Перемещение</button>
+        <button id="btn-rotate" class="tool" data-mode="rotate" title="Поворот (E)">Поворот</button>
+        <button id="btn-scale" class="tool" data-mode="scale" title="Масштаб (R)">Масштаб</button>
+        <button id="btn-space" title="Локальные/глобальные оси">Мировые оси</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button id="btn-duplicate" title="Дублировать (Ctrl+D)">Дублировать</button>
+        <button id="btn-delete" title="Удалить (Del)">Удалить</button>
+        <button id="btn-undo" title="Отменить (Ctrl+Z)">Отменить</button>
+        <button id="btn-redo" title="Повторить (Ctrl+Y)">Повторить</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button id="btn-view-persp" title="Перспектива">Перспектива</button>
+        <button id="btn-view-front" title="Спереди">Спереди</button>
+        <button id="btn-view-top" title="Сверху">Сверху</button>
+        <button id="btn-view-side" title="Сбоку">Сбоку</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button id="btn-new" title="Новая сцена (Ctrl+N)">Новая</button>
+        <button id="btn-open" title="Открыть (Ctrl+O)">Открыть</button>
+        <button id="btn-save" title="Сохранить (Ctrl+S)">Сохранить</button>
+        <button id="btn-export" title="Экспорт GLB (Ctrl+E)">GLB</button>
+        <button id="btn-screenshot" title="Скриншот (Ctrl+Shift+S)">PNG</button>
+      </div>
+    </div>
+
+    <div id="main">
+      <aside id="left-panel">
+        <div class="panel-header">Сцена</div>
+        <div id="outliner"></div>
+        <div class="panel-header">Свойства сцены</div>
+        <div class="panel-body">
+          <div class="row">
+            <label>Фон</label>
+            <input type="color" id="scene-bg" value="#1a1a1e" />
+          </div>
+          <div class="row">
+            <label>Сетка</label>
+            <input type="checkbox" id="scene-grid" checked />
+          </div>
+          <div class="row">
+            <label>Оси</label>
+            <input type="checkbox" id="scene-axes" checked />
+          </div>
+          <div class="row">
+            <label>Тени</label>
+            <input type="checkbox" id="scene-shadows" checked />
+          </div>
+        </div>
+      </aside>
+
+      <div id="viewport">
+        <canvas id="canvas"></canvas>
+      </div>
+
+      <aside id="right-panel">
+        <div class="panel-header">Объект</div>
+        <div class="panel-body" id="obj-props">
+          <div class="row">
+            <label>Имя</label>
+            <input type="text" id="prop-name" disabled />
+          </div>
+          <div class="row">
+            <label>Тип</label>
+            <span id="prop-type" class="muted">—</span>
+          </div>
+          <div class="row">
+            <label>Видимость</label>
+            <input type="checkbox" id="prop-visible" disabled />
+          </div>
+        </div>
+
+        <div class="panel-header">Трансформация</div>
+        <div class="panel-body">
+          <div class="vec-row">
+            <label>Позиция</label>
+            <div class="vec">
+              <input type="number" step="0.1" id="pos-x" data-prop="position" data-axis="x" disabled />
+              <input type="number" step="0.1" id="pos-y" data-prop="position" data-axis="y" disabled />
+              <input type="number" step="0.1" id="pos-z" data-prop="position" data-axis="z" disabled />
+            </div>
+          </div>
+          <div class="vec-row">
+            <label>Поворот°</label>
+            <div class="vec">
+              <input type="number" step="1" id="rot-x" data-prop="rotation" data-axis="x" disabled />
+              <input type="number" step="1" id="rot-y" data-prop="rotation" data-axis="y" disabled />
+              <input type="number" step="1" id="rot-z" data-prop="rotation" data-axis="z" disabled />
+            </div>
+          </div>
+          <div class="vec-row">
+            <label>Масштаб</label>
+            <div class="vec">
+              <input type="number" step="0.1" id="scl-x" data-prop="scale" data-axis="x" disabled />
+              <input type="number" step="0.1" id="scl-y" data-prop="scale" data-axis="y" disabled />
+              <input type="number" step="0.1" id="scl-z" data-prop="scale" data-axis="z" disabled />
+            </div>
+          </div>
+        </div>
+
+        <div id="material-section">
+          <div class="panel-header">Материал</div>
+          <div class="panel-body">
+            <div class="row">
+              <label>Цвет</label>
+              <input type="color" id="mat-color" value="#8ab4f8" disabled />
+            </div>
+            <div class="row slider-row">
+              <label>Металличность</label>
+              <input type="range" id="mat-metalness" min="0" max="1" step="0.01" value="0.1" disabled />
+            </div>
+            <div class="row slider-row">
+              <label>Шероховатость</label>
+              <input type="range" id="mat-roughness" min="0" max="1" step="0.01" value="0.7" disabled />
+            </div>
+            <div class="row">
+              <label>Каркас</label>
+              <input type="checkbox" id="mat-wireframe" disabled />
+            </div>
+          </div>
+        </div>
+
+        <div id="light-section" class="hidden">
+          <div class="panel-header">Свет</div>
+          <div class="panel-body">
+            <div class="row">
+              <label>Цвет</label>
+              <input type="color" id="light-color" value="#ffffff" disabled />
+            </div>
+            <div class="row slider-row">
+              <label>Интенсивность</label>
+              <input type="range" id="light-intensity" min="0" max="20" step="0.1" value="5" disabled />
+            </div>
+            <div class="row" id="light-distance-row">
+              <label>Дальность</label>
+              <input type="number" id="light-distance" step="0.5" value="0" disabled />
+            </div>
+            <div class="row">
+              <label>Тени</label>
+              <input type="checkbox" id="light-shadow" disabled />
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="statusbar">
+      <span id="status-selected">Ничего не выбрано</span>
+      <span class="status-sep"></span>
+      <span id="status-objects">Объектов: 0</span>
+      <span class="status-sep"></span>
+      <span id="status-fps">FPS: —</span>
+    </div>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
